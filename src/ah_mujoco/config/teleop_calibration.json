@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "saved_at": "2026-09-05 19:36:09",
+  "curl_open": 65.62355041503906,
+  "curl_closed": 146.6458740234375,
+  "thumb_flex_open": 38.052242279052734,
+  "thumb_flex_closed": 78.2464370727539,
+  "thumb_opp_open": 37.79555130004883,
+  "thumb_opp_closed": 14.301061630249023,
+  "body_scale": 0.7859642888705629,
+  "upper_arm_m": 0.1573374683957513,
+  "forearm_m": 0.18862451727115004,
+  "msj_reference": 12730.818933655168,
+  "msj_spread": 8353.658449190398,
+  "msj_samples": 245.0,
+  "limb_samples": 205.0
+}
