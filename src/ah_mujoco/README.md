@@ -1775,3 +1775,92 @@ So the arm uses one-sided colouring and the hand stays symmetric:
 Jerky motion is still flagged either way - only the "too smooth" half of the
 scale differs, and that half means different things for a tracked hand and a
 commanded robot.
+
+## Session analysis
+
+Record a session, then turn it into a report.
+
+```bash
+# during the exercise, in its own terminal
+ros2 run ah_mujoco session_recorder --ros-args -p out:=/ws/vendor/session1.npz
+# Ctrl-C when finished; it writes on exit
+
+ros2 run ah_mujoco session_report --ros-args \
+    -p session:=/ws/vendor/session1.npz \
+    -p out:=/ws/vendor/session1.html
+```
+
+One self-contained HTML file with Plotly figures - no server, no internet.
+
+The recorder samples every channel on ONE timer rather than on each topic's
+callback. Comparing an operator signal against a robot signal only means
+something if both were sampled at the same instants, and topics arriving at 15,
+30, 60 and 120 Hz do not give that for free.
+
+### What it measures
+
+**Biofidelity - did the robot reproduce the operator's motion?**
+
+| metric | what it means |
+|---|---|
+| lag | delay between operator and robot, by cross-correlation |
+| gain | fraction of the operator's motion that reached the robot |
+| residual RMSE | what is left after removing lag and gain - the part the link genuinely failed to convey |
+| bandwidth | the -3 dB point of the transfer function: the fastest motion still commandable |
+| smoothness ratio | robot jerk over operator jerk. Above 1 the link added jerk; below 1 it filtered, which costs lag |
+
+**Biomechanical stress - what did the operator pay?**
+
+| metric | what it means |
+|---|---|
+| shoulder elevation, abduction, elbow flexion | over time, against ergonomic screening bands |
+| exposure | time and fraction spent outside those bands |
+| static loading | sustained holds, invisible in a range-of-motion summary because the angle is simply constant |
+| jerk exposure | cumulative, as a repetitive-load proxy |
+| posture score | a coarse RULA-style arm flag |
+
+### Three things that had to be got right
+
+**Correlate velocity, not position.** Teleoperation signals are smooth, and the
+cross-correlation of two smooth position traces has a very broad peak -
+measured 80-100 ms of error against a known lag. Differentiating first
+sharpens it: lag is then recovered to within one sample across 0-500 ms.
+
+**Coherence is the wrong bandwidth metric.** For a noiseless linear filter,
+magnitude-squared coherence stays near 1 at every frequency however much the
+filter attenuates. A 0.5 Hz low-pass measured a 0.94 Hz "bandwidth" that way,
+and a 5 Hz one measured 12.9 Hz. The transfer-function magnitude gives the
+right answer, and coherence is reported only as a confidence measure on the
+gain estimate.
+
+**Compare Cartesian speeds, not joint velocities.** The robot's joint angles
+are run through forward kinematics first. Comparing a wrist speed in m/s
+against the norm of six joint velocities in rad/s compares different
+quantities - correlation 0.05 on a link that was in fact tracking at 0.81.
+
+Validated against a synthetic session built through the real IK, with a known
+180 ms lag, 0.30 position scale, joint-space rate limiting and a 20 s hold:
+
+| | truth | measured |
+|---|---|---|
+| lag | 180 ms | 167 ms |
+| gain | 0.30 | 0.256 |
+| longest hold | 20 s | 17 s |
+
+The gain reading below the commanded 0.30 is not an error - the rate limiter
+is eating motion, which is the kind of thing the report exists to surface.
+
+### Reading it
+
+Lag and gain are both correctable: one by prediction, the other by a setting.
+They are estimated and removed before the residual is computed, so the residual
+is the part that is not correctable.
+
+A link can score well on fidelity and badly on stress, or the reverse. A rigid
+high-gain mapping transmits faithfully while forcing the operator into extreme
+postures; a heavily filtered one is comfortable and transmits almost nothing.
+The report keeps the two apart rather than averaging them into one number.
+
+The posture bands are ergonomic screening ranges, not anatomical limits, and
+the arm score is a coarse flag - a real RULA assessment needs wrist, neck,
+trunk, load and muscle use scored by a trained observer.
