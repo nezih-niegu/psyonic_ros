@@ -13,14 +13,15 @@ services:
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=100
       - ROS_LOCALHOST_ONLY=0
-      # CYCLONEDDS_URI removed on purpose: it pointed at /cyclonedds.xml on the
-      # host, which does not exist, so Docker created an empty DIRECTORY and
-      # mounted it. CycloneDDS then failed to parse its config and discovery
-      # stalled intermittently - `ros2 node list` hanging, topics visible to
-      # one process but not another. Defaults are correct for a single host
-      # with network_mode: host. To tune it later, create a real XML file and
-      # mount it then.
+      # The config lives in this repo at docker/cyclonedds.xml. An earlier
+      # version mounted /cyclonedds.xml from the HOST ROOT, which does not
+      # exist - Docker then created an empty DIRECTORY there and mounted that,
+      # so CycloneDDS was handed a directory as its config file. Discovery
+      # stalled intermittently: `ros2 node list` hanging, topics visible to
+      # `ros2 topic hz` but not to a node subscribing to the same topic.
+      - CYCLONEDDS_URI=file:///etc/cyclonedds/cyclonedds.xml
     volumes:
+      - ./cyclonedds.xml:/etc/cyclonedds/cyclonedds.xml:ro
       - /dev:/dev
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ${HOME}/.Xauthority:/root/.Xauthority:ro
@@ -29,7 +30,7 @@ services:
       # layer and is destroyed by `docker compose down`, `build`, or
       # `up --force-recreate`.
       - ../src:/ws/src
-      - ../vendor:/ws/vendor      # models, .deb files, anything downloaded
+      - ../src/vendor:/ws/vendor  # models, .deb files, anything downloaded
       - ../install:/ws/install    # build products, so a rebuild is not needed
       - ../build:/ws/build
       - ../.ros:/root/.ros        # calibration, logs

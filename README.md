@@ -193,6 +193,25 @@ hand an interleaved mix of two command streams.
 **The xArm services are under `/ufactory`, not `/xarm`.** Check with
 `ros2 service list | grep motion_enable` if a service call hangs.
 
+## Session analysis
+
+Record an exercise and get a report on how well the motion transmitted and
+what it cost the operator:
+
+```bash
+ros2 run ah_mujoco session_recorder --ros-args -p out:=/ws/vendor/session1.npz
+# Ctrl-C when done
+
+ros2 run ah_mujoco session_report --ros-args \
+    -p session:=/ws/vendor/session1.npz -p out:=/ws/vendor/session1.html
+```
+
+One self-contained HTML file of Plotly figures: transmission lag and gain,
+usable bandwidth, smoothness preservation, and the operator's shoulder and
+elbow against ergonomic comfort bands. `src/ah_mujoco/README.md` has the
+detail, including why velocity correlation and transfer-function magnitude are
+used instead of the obvious alternatives.
+
 ## Diagnostics
 
 ```bash

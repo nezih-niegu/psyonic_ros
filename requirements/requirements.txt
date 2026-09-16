@@ -6,3 +6,4 @@ mujoco>=3.1
 mediapipe
 opencv-python
 glfw
+plotly
